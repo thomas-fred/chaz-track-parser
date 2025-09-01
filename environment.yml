@@ -1,0 +1,19 @@
+# to install this environment:
+# micromamba create -f environment.yml -y
+name: chaz
+channels:
+  - conda-forge  # majority of dependencies
+  - nodefaults
+dependencies:
+  - python=3.12
+  - pip:
+    - -e .
+  - hatch
+  - jupyter
+  - notebook
+  - netCDF4
+  - numpy
+  - matplotlib
+  - bioconda::snakemake
+  - tqdm
+  - xarray

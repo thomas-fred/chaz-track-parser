@@ -1,0 +1,8 @@
+configfile: "config.yaml"
+
+include: "parse.smk"
+
+wildcard_constraints:
+    SSP=r"ssp\d{3}",
+    SAMPLE=r"\d{3}",
+    GENESIS=r"SD|CRH",
