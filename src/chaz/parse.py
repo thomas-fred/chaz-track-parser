@@ -15,10 +15,17 @@ KNOTS_PER_METER_PER_SECOND = 0.051444
 REFERENCE_DATE = "1950-01-01"  # netCDF 'time' variable is days since this date
 
 
-def to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> pd.DataFrame:
+def to_table(
+    ds: xr.Dataset,
+    genesis_method: str,
+    sample_id: str,
+    epoch: int,
+    epoch_half_width_years: int
+) -> pd.DataFrame:
     """
     Create timestamps from reference and offsets
     Convert sparse datacube to dense table
+    Filter to epoch years
     Infer radius to maximum winds with regression model
     """
 
@@ -69,6 +76,12 @@ def to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> pd.DataFram
     df = pd.concat(data)
     df["ensemble_number"] = df["ensemble_number"].astype(int)
     df = df.dropna().reset_index(drop=True)
+
+    # Filter to epoch
+    df = df[
+        (epoch - epoch_half_width_years < df.storm_start_year)
+        & (df.storm_start_year < epoch + epoch_half_width_years)
+    ]
 
     # Labeling with IDs takes about 35s for 17M rows
     df["storm_id"] = \

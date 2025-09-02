@@ -3,17 +3,17 @@ rule netcdf_to_parquet:
     Read netCDF
     Create timestamps from reference and offsets
     Convert sparse datacube to dense table
+    Filter to epoch
     Infer radius to maximum winds with regression model
     Write as parquet
 
     Test with:
-    snakemake -c1 data/out/ssp585/UKESM1-0-LL/SD/000/tracks.pq
+    snakemake -c1 data/out/ssp585/UKESM1-0-LL/2000/SD/000/tracks.pq
     """
     input:
         netcdf = f"{config['raw_data_dir']}/{{ssp}}/{{gcm}}_Global_2100_2ens{{sample}}_{{genesis}}_compressed.nc"
     output:
-        # N.B. Baseline and future tracks coexist in these files -- we should separate
-        parquet = "{data}/out/{ssp}/{gcm}/{genesis}/{sample}/tracks.pq"
+        parquet = "{data}/out/{ssp}/{gcm}/{epoch}/{genesis}/{sample}/tracks.pq"
     run:
         import xarray as xr
 
@@ -23,6 +23,8 @@ rule netcdf_to_parquet:
             xr.open_dataset(input.netcdf, engine='netcdf4'),
             wildcards.genesis,
             wildcards.sample,
+            int(wildcards.epoch),
+            int(config["epoch_half_width_years"]),
         ).to_parquet(output.parquet)
 
 
@@ -34,9 +36,9 @@ rule concat_samples:
     snakemake -c1 data/out/ssp585/UKESM1-0-LL/SD/tracks.pq
     """
     input:
-        samples = expand("{{data}}/out/{{ssp}}/{{gcm}}/{{genesis}}/{sample:03d}/tracks.pq", sample=SAMPLES)
+        samples = expand("{{data}}/out/{{ssp}}/{{gcm}}/{{epoch}}/{{genesis}}/{sample}/tracks.pq", sample=SAMPLES)
     output:
-        concat = "{data}/out/{ssp}/{gcm}/{genesis}/tracks.pq"
+        concat = "{data}/out/{ssp}/{gcm}/{epoch}/{genesis}/tracks.pq"
     run:
         import pandas as pd
 
@@ -46,8 +48,9 @@ rule concat_samples:
 rule parse_ssp:
     input:
         expand(
-            "data/out/{{ssp}}/{gcm}/{genesis}/tracks.pq",
+            "data/out/{{ssp}}/{gcm}/{epoch}/{genesis}/tracks.pq",
             gcm=GCMS,
+            epoch=EPOCHS,
             genesis=GENESIS_METHODS,
         )
     output:
