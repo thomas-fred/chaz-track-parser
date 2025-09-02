@@ -1,3 +1,5 @@
 data
+.snakemake
+*__pycache__*
 chia-ying_chaz_tutorial
 explore.ipynb

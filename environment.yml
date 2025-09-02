@@ -9,11 +9,13 @@ dependencies:
   - pip:
     - -e .
   - hatch
+  - geopandas
   - jupyter
   - notebook
   - netCDF4
   - numpy
   - matplotlib
   - bioconda::snakemake
+  - seaborn
   - tqdm
   - xarray

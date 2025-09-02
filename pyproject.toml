@@ -11,7 +11,7 @@ license = "MIT"
 authors = [{ name = "Fred Thomas", email = "fred.thomas@eci.ox.ac.uk" }]
 keywords = []
 classifiers = [
-    "Intended Audience :: Researchers",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
