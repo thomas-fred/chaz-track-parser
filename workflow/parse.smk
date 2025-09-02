@@ -52,6 +52,8 @@ rule parse_ssp:
         )
     output:
         "data/out/{ssp}.flag"
+    shell:
+        "touch {output}"
 
 
 rule parse_all:
@@ -62,3 +64,5 @@ rule parse_all:
         )
     output:
         "data/out.flag"
+    shell:
+        "touch {output}"
