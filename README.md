@@ -12,7 +12,7 @@ Concatenate over samples
 ## Installation
 
 ```shell
-micromamba create -f environment.yml -y
+micromamba create -f environment.yaml -y
 ```
 
 ## Usage
