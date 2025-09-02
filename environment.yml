@@ -8,11 +8,11 @@ dependencies:
   - python=3.12
   - pip:
     - -e .
-  - hatch
   - geopandas
+  - hatch
   - jupyter
-  - notebook
   - netCDF4
+  - notebook
   - numpy
   - matplotlib
   - bioconda::snakemake
