@@ -8,9 +8,13 @@ dependencies:
   - python=3.12
   - pip:
     - -e .
+  - datashader
   - geopandas
+  - geoviews
   - hatch
+  - holoviews
   - jupyter
+  - jupyter_bokeh
   - netCDF4
   - notebook
   - numpy
