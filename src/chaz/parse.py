@@ -12,7 +12,7 @@ GENESIS_METHOD_CODE = {  # Short code for use in storm_id column
     "SD": "S",  # saturation deficit
     "CRH": "H",  # relative humidity
 }
-KNOTS_PER_METER_PER_SECOND = 0.051444
+METERS_PER_SECOND_PER_KNOT = 0.51444
 REFERENCE_DATE = "1950-01-01"  # netCDF 'time' variable is days since this date
 
 
@@ -67,7 +67,7 @@ def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> gpd.Ge
                     "timestep": timesteps,
                     "longitude_deg": longitude,
                     "latitude_deg": latitude,
-                    "max_wind_speed_ms": ds.Mwspd.data[i, :, :].T.reshape(length) * KNOTS_PER_METER_PER_SECOND,
+                    "max_wind_speed_ms": ds.Mwspd.data[i, :, :].T.reshape(length) * METERS_PER_SECOND_PER_KNOT,
                 }
             )
         )
