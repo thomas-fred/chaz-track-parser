@@ -62,20 +62,18 @@ rule netcdf_to_geoparquet:
         import geopandas as gpd
         import xarray as xr
 
-        from chaz.parse import chaz_to_table, filter_by_year, tag_basin, append_missing_vars
+        from chaz.parse import chaz_to_table, tag_category, tag_basin, estimate_rmw
 
-        append_missing_vars(
-            tag_basin(
-                filter_by_year(
+        estimate_rmw(
+            tag_category(
+                tag_basin(
                     chaz_to_table(
-                        xr.open_dataset(input.netcdf, engine='netcdf4'),
+                        xr.open_dataset(input.netcdf, engine="netcdf4"),
                         wildcards.genesis,
                         wildcards.sample
                     ),
-                    int(wildcards.epoch),
-                    int(config["epoch_half_width_years"]),
-                ),
-                gpd.read_file(input.basins),
+                    gpd.read_file(input.basins),
+                )
             )
         ).to_parquet(output.parquet)
 

@@ -1,4 +1,5 @@
 from math import prod
+from typing import Iterable
 
 import geopandas as gpd
 import numpy as np
@@ -91,12 +92,45 @@ def filter_by_year(df: pd.DataFrame, epoch: int, epoch_half_width_years: int) ->
     ]
 
 
+@np.vectorize
+def saffir_simpson(wind_speed_ms: float | Iterable[float]):
+    """
+    Identify the Saffir-Simpson storm category given a wind speed in m/s.
+
+    N.B. These classifications were developed for 1-minute sustained measurements.
+    """
+
+    if wind_speed_ms < 0:
+        raise ValueError(f"{wind_speed_ms=} should be positive-valued")
+    elif np.isnan(wind_speed_ms):
+        return np.nan
+    elif wind_speed_ms < 18:
+        return -1
+    elif wind_speed_ms < 33:
+        return 0  # Tropical Storm
+    elif wind_speed_ms < 43:
+        return 1  # Category 1
+    elif wind_speed_ms < 50:
+        return 2  # Category 2
+    elif wind_speed_ms < 58:
+        return 3  # Category 3
+    elif wind_speed_ms < 70:
+        return 4  # Category 4
+    elif wind_speed_ms >= 70:
+        return 5  # Category 5
+
+
+def tag_category(df: pd.DataFrame) -> pd.DataFrame:
+    df["ss_category"] = saffir_simpson(df["max_wind_speed_ms"])
+    return df
+
+
 def tag_basin(df: gpd.GeoDataFrame, basins: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Tag each track point with the encompassing TC basin."""
     return df.to_crs(epsg=4326).sjoin(basins.to_crs(epsg=4326)).drop(columns="index_right")
 
 
-def append_missing_vars(df: pd.DataFrame) -> pd.DataFrame:
-    """Infer radius to maximum sustained winds with a model"""
+def estimate_rmw(df: pd.DataFrame) -> pd.DataFrame:
+    """Infer radius to maximum sustained winds with a model fit."""
     df["radius_to_max_winds_km"] = r_max(df.max_wind_speed_ms, df.latitude_deg)
     return df
