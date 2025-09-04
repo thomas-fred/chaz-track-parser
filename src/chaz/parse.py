@@ -1,5 +1,4 @@
 from math import prod
-from typing import Iterable
 
 import geopandas as gpd
 import numpy as np
@@ -93,7 +92,7 @@ def filter_by_year(df: pd.DataFrame, epoch: int, epoch_half_width_years: int) ->
 
 
 @np.vectorize
-def saffir_simpson(wind_speed_ms: float | Iterable[float]):
+def saffir_simpson(wind_speed_ms: float):
     """
     Identify the Saffir-Simpson storm category given a wind speed in m/s.
 

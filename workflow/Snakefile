@@ -1,6 +1,6 @@
 configfile: "config.yaml"
 
-SSPS = ("ssp245", "ssp585")
+SSPS = ("245", "585")
 # N.B. The model "MRI-ESM2-0" is in ssp585 but not ssp245, while "MPI-ESM1-2" is in ssp245 but not ssp585
 GCMS = ("CESM2", "CNRM-CM6-1", "EC-Earth3", "IPSL-CM6A-LR", "MIROC6", "UKESM1-0-LL")
 EPOCHS = ("2000", "2050")
@@ -8,7 +8,7 @@ SAMPLES = tuple(f"{x:03d}" for x in range(0, 10))
 GENESIS_METHODS = ("SD", "CRH")
 
 wildcard_constraints:
-    ssp=r"ssp\d{3}",
+    ssp=r"\d{3}",
     sample=r"\d{3}",
     epoch=r"\d{4}",
     genesis=r"SD|CRH",

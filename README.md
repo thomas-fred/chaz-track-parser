@@ -20,7 +20,7 @@ micromamba create -f environment.yaml -y
 To create tabular records for SSP 585 and GCM UKESM1-0-LL for the
 saturation deficit (SD) genesis method:
 ```shell
-snakemake -c1 data/out/ssp585/UKESM1-0-LL/SD/tracks.pq
+snakemake -c1 data/out/ssp585/UKESM1-0-LL/SD/tracks.gpq
 ```
 
 See `workflow/parse.smk` for more examples.
