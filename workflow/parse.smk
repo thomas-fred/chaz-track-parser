@@ -56,7 +56,7 @@ rule netcdf_to_geoparquet:
         basins = rules.generate_basin_definition.output.basins,
         netcdf = f"{config['raw_data_dir']}/ssp{{ssp}}/{{gcm}}_Global_2100_2ens{{sample}}_{{genesis}}_compressed.nc"
     output:
-        parquet = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/sample-{sample}/tracks.gpq"
+        parquet = temp("{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/sample-{sample}/tracks.gpq")
     run:
         import geopandas as gpd
         import xarray as xr
