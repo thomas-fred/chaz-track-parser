@@ -146,6 +146,25 @@ rule filter_to_epoch:
         ).to_parquet(output.epoch)
 
 
+rule parse_ssp:
+    """
+    Generate all tracks for a given SSP
+
+    Test with:
+    snakemake -c1 data/out/genesis-CRH/SSP-585.flag
+    """
+    input:
+        expand(
+            "data/out/genesis-{{genesis}}/SSP-{{ssp}}/GCM-{gcm}/epoch-{epoch}/tracks.gpq",
+            gcm=GCMS,
+            epoch=EPOCHS,
+        )
+    output:
+        "data/out/genesis-{genesis}/SSP-{ssp}.flag"
+    shell:
+        "touch {output}"
+
+
 rule parse_genesis_method:
     """
     Generate all tracks for a given genesis method
