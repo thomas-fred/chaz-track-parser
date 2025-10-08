@@ -16,6 +16,10 @@ METERS_PER_SECOND_PER_KNOT = 0.51444
 REFERENCE_DATE = "1950-01-01"  # netCDF 'time' variable is days since this date
 
 
+def signed_longitude_to_strictly_positive(coords: tuple[float, float]) -> tuple[float, float]:
+    return [(long + 360 if long < 0 else long, lat) for long, lat in coords]
+
+
 def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> gpd.GeoDataFrame:
     """
     Create timestamps from reference and offsets

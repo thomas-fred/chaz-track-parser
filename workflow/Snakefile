@@ -13,4 +13,6 @@ wildcard_constraints:
     epoch=r"\d{4}",
     genesis=r"SD|CRH",
 
-include: "parse.smk"
+include: "1_context.smk"
+include: "2_parse.smk"
+include: "3_target.smk"
