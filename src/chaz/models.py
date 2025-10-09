@@ -19,6 +19,8 @@ ENV_PRESSURE = {
 # Rotation speed of the Earth in rad/s
 OMEGA = (2 * np.pi) / (24 * 60 * 60)
 
+HECTOPASCALS_PER_PASCAL = 0.01
+
 
 def r_max(v_max: np.ndarray, phi: np.ndarray) -> np.ndarray:
     """
@@ -76,10 +78,10 @@ def p_min(
     additional shape data, this function offers a rudimentary estimate of
     pressure.
 
-    The derivation of the relevant equation is as follows:
+    The derivation of the implemented equation is as follows:
 
     Gradient wind balance, (see http://noaa-ocs-modeling.github.io/PaHM/html/models.html):
-    v(r)**2 + frv(r) = r/p * dp(r)/dr, (1)
+    v(r)**2 + frv(r) = r/rho * dp(r)/dr, (1)
 
     Holland 1980 pressure profile:
     p(r) = p_min + (p_env - p_min) * e**(-(R_max/r)**B), (2)
@@ -87,7 +89,8 @@ def p_min(
     Find the derivative of (2) where r = r_max:
     dp(r)/dr = B(p_env - p_min) / (e * r_max), (3)
 
-    Then, substitute (3) into (1), again with r = r_max.
+    Then, substitute (3) into (1), again with r = r_max and rearrange to give:
+    p_min = p_env - (rho * e * (v_max**2 + f * r_max * v_max)) / B
 
     Args:
         p_env: Environmental pressure (well away from influence of TC), hectopascals
@@ -102,6 +105,6 @@ def p_min(
     lhs_wind_balance =  v_max**2 + coriolis(phi) * r_max * v_max
     numerator = rho * np.e * lhs_wind_balance
     b = b_vickery_wadhera(phi, r_max)
-    p_min = p_env - numerator / b
+    p_min = p_env - HECTOPASCALS_PER_PASCAL * (numerator / b)
     return p_min
 

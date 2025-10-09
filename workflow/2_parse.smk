@@ -70,6 +70,8 @@ rule concat_samples:
             df.loc[mask, "tc_number"] = tc_number
         assert -1 not in df["tc_number"].unique()
 
+        # TODO: assign a year that respects historic_frequency.csv
+
         df.loc[
             :,
             [
@@ -82,6 +84,7 @@ rule concat_samples:
                 "track_id",
                 "max_wind_speed_ms",
                 "radius_to_max_winds_km",
+                "min_pressure_hpa",
                 "geometry",
             ]
         ].to_parquet(output.concat)

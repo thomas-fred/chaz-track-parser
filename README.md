@@ -5,7 +5,8 @@ Parse CHAZ tropical cyclone tracks from netCDF to parquet format
 - Read netCDF
 - Create timestamps
 - Convert to long format
-- Add radius to maximum sustained winds column with Willoughby 2004 log-linear model
+- Estimate radius to maximum sustained winds (Willoughby 2004 log-linear model)
+- Estimate minimum pressure (Holland 1980 profile with Vickery & Waldera 2008 fit for shape parameter)
 - Save as parquet format
 - Concatenate over samples
 
