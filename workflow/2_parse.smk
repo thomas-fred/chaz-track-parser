@@ -22,17 +22,20 @@ rule netcdf_to_geoparquet:
         import geopandas as gpd
         import xarray as xr
 
-        from chaz.parse import chaz_to_table, tag_category, tag_basin, estimate_rmw
+        from chaz.parse import chaz_to_table, tag_category, tag_basin, estimate_rmw, estimate_p_min
 
-        estimate_rmw(
-            tag_category(
-                tag_basin(
-                    chaz_to_table(
-                        xr.open_dataset(input.netcdf, engine="netcdf4"),
-                        wildcards.genesis,
-                        wildcards.sample
-                    ),
-                    gpd.read_file(input.basins),
+
+        estimate_p_min(
+            estimate_rmw(
+                tag_category(
+                    tag_basin(
+                        chaz_to_table(
+                            xr.open_dataset(input.netcdf, engine="netcdf4"),
+                            wildcards.genesis,
+                            wildcards.sample
+                        ),
+                        gpd.read_file(input.basins),
+                    )
                 )
             )
         ).to_parquet(output.parquet)

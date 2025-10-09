@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from chaz.models import r_max
+from chaz.models import ENV_PRESSURE, r_max, p_min
 
 
 GENESIS_METHOD_CODE = {  # Short code for use in storm_id column
@@ -136,4 +136,15 @@ def tag_basin(df: gpd.GeoDataFrame, basins: gpd.GeoDataFrame) -> gpd.GeoDataFram
 def estimate_rmw(df: pd.DataFrame) -> pd.DataFrame:
     """Infer radius to maximum sustained winds with a model fit."""
     df["radius_to_max_winds_km"] = r_max(df.max_wind_speed_ms, df.latitude_deg)
+    return df
+
+
+def estimate_p_min(df: pd.DataFrame) -> pd.DataFrame:
+    """Infer minimum eye pressure from a model fit."""
+    df["min_pressure_hpa"] = p_min(
+        df.basin_id.map(ENV_PRESSURE),
+        df.max_wind_speed_ms,
+        df.radius_to_max_winds_km * 1_000,
+        df.geometry.y
+    )
     return df

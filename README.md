@@ -23,4 +23,4 @@ saturation deficit (SD) genesis method:
 snakemake -c1 data/out/ssp585/UKESM1-0-LL/SD/tracks.gpq
 ```
 
-See `workflow/parse.smk` for more examples.
+See `workflow/*.smk` for more examples.
