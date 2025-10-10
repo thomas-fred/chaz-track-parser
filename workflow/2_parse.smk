@@ -6,24 +6,24 @@ rule netcdf_to_geoparquet:
     Create unique track_id
     Create geometry column
     Infer radius to maximum winds with regression model
+    Infer minimum pressure with a parametric model
     Write as geoparquet
 
     ~12GB RAM per CPU
 
     Test with:
-    snakemake -c1 data/out/genesis-SD/SSP-585/GCM-UKESM1-0-LL/sample-000/tracks.gpq
+    snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/sample-000/tracks.gpq
     """
     input:
         basins = rules.generate_basin_definition.output.basins,
         netcdf = f"{config['raw_data_dir']}/ssp{{ssp}}/{{gcm}}_Global_2100_2ens{{sample}}_{{genesis}}_compressed.nc"
     output:
-        parquet = temp("{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/sample-{sample}/tracks.gpq")
+        parquet = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/sample-{sample}/tracks.gpq"
     run:
         import geopandas as gpd
         import xarray as xr
 
         from chaz.parse import chaz_to_table, tag_category, tag_basin, estimate_rmw, estimate_p_min
-
 
         estimate_p_min(
             estimate_rmw(
@@ -46,13 +46,13 @@ rule concat_samples:
     Concatenate the samples for a given SSP, GCM and genesis method
 
     Test with:
-    snakemake -c1 data/out/genesis-SD/SSP-585/GCM-UKESM1-0-LL/tracks.gpq
+    snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/tracks.gpq
     """
     input:
         samples = expand(
             "{{data}}/out/genesis-{{genesis}}/SSP-{{ssp}}/GCM-{{gcm}}/sample-{sample}/tracks.gpq",
             sample=SAMPLES
-        )
+        ),
     output:
         concat = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/tracks.gpq"
     run:
@@ -61,22 +61,10 @@ rule concat_samples:
 
         df = pd.concat([gpd.read_parquet(path) for path in input.samples])
 
-        # Label with a tc_number (0 is first TC of the year)
-        # Unique within a given year of SSP-GCM-genesis-method combination
-        df["tc_number"] = -1
-        for year in df.storm_start_year.unique():
-            mask = df.storm_start_year == year
-            tc_number, track_id = pd.factorize(df.loc[mask, "track_id"])
-            df.loc[mask, "tc_number"] = tc_number
-        assert -1 not in df["tc_number"].unique()
-
-        # TODO: assign a year that respects historic_frequency.csv
-
         df.loc[
             :,
             [
-                "storm_start_year",
-                "tc_number",
+                "source_year",
                 "sample",
                 "ensemble",
                 "timestep",
@@ -95,12 +83,12 @@ rule filter_to_epoch:
     Extract window of years that comprise an epoch
 
     Test with:
-    snakemake -c1 data/out/genesis-SD/SSP-585/GCM-UKESM1-0-LL/epoch-2000/tracks.gpq
+    snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2000/tracks-raw-freq.gpq
     """
     input:
         all_years = rules.concat_samples.output.concat
     output:
-        epoch = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/tracks.gpq"
+        epoch = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/tracks-raw-freq.gpq"
     run:
         import geopandas as gpd
 
@@ -111,3 +99,28 @@ rule filter_to_epoch:
             int(wildcards.epoch),
             int(config["epoch_half_width_years"])
         ).to_parquet(output.epoch)
+
+
+rule normalise_frequency:
+    """
+    Relabel TC years per-basin so annual frequencies are plausible.
+
+    Test with:
+    snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2000/tracks.gpq
+    """
+    input:
+        epoch = rules.filter_to_epoch.output.epoch,
+        historic_frequency = rules.historic_frequency.output.frequency,
+    output:
+        epoch = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/tracks.gpq"
+    run:
+        import geopandas as gpd
+        import pandas as pd
+
+        from chaz.parse import normalise_frequency
+
+        normalise_frequency(
+            pd.read_csv(input.historic_frequency, na_filter=False).set_index("basin_id"),
+            gpd.read_parquet(input.epoch)
+        ).to_parquet(output.epoch)
+

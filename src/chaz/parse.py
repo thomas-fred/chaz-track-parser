@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from chaz.models import ENV_PRESSURE, r_max, p_min
+from chaz.models import ENV_PRESSURE, r_max_willoughby_2004, p_min_holland_1980
 
 
 GENESIS_METHOD_CODE = {  # Short code for use in storm_id column
@@ -49,7 +49,7 @@ def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> gpd.Ge
     length = prod(ds.time_datetime.data.shape)
     storm = np.repeat(ds.stormID.data, ds.lifelength.shape)
     # N.B. We transpose the input arrays to have stormID as the first dim, then lifelength
-    storm_start_year = np.repeat(
+    source_year = np.repeat(
         ds.time_datetime.data.T[:, 0].astype('datetime64[Y]').astype(int) + 1970,
         ds.lifelength.shape
     )
@@ -64,7 +64,7 @@ def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> gpd.Ge
             pd.DataFrame(
                 {
                     "time_utc": timestamps,
-                    "storm_start_year": storm_start_year,
+                    "source_year": source_year,
                     "storm": storm,
                     "sample": np.ones(length) * int(sample_id),
                     "ensemble": np.ones(length) * i,
@@ -81,7 +81,7 @@ def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> gpd.Ge
     df["track_id"] = \
         f"{GENESIS_METHOD_CODE[genesis_method]}" \
         + f"_{int(sample_id):03d}" \
-        + df["storm_start_year"].map(lambda x: f"_{x:04d}") \
+        + df["source_year"].map(lambda x: f"_{x:04d}") \
         + df["storm"].map(lambda x: f"_{x:05d}") \
         + df["ensemble"].map(lambda x: f"_{x:02d}")
 
@@ -90,8 +90,8 @@ def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> gpd.Ge
 
 def filter_by_year(df: pd.DataFrame, epoch: int, epoch_half_width_years: int) -> pd.DataFrame:
     return df[
-        (epoch - epoch_half_width_years < df.storm_start_year)
-        & (df.storm_start_year < epoch + epoch_half_width_years)
+        (epoch - epoch_half_width_years < df.source_year)
+        & (df.source_year < epoch + epoch_half_width_years)
     ]
 
 
@@ -135,16 +135,74 @@ def tag_basin(df: gpd.GeoDataFrame, basins: gpd.GeoDataFrame) -> gpd.GeoDataFram
 
 def estimate_rmw(df: pd.DataFrame) -> pd.DataFrame:
     """Infer radius to maximum sustained winds with a model fit."""
-    df["radius_to_max_winds_km"] = r_max(df.max_wind_speed_ms, df.latitude_deg)
+    df["radius_to_max_winds_km"] = r_max_willoughby_2004(df.max_wind_speed_ms, df.latitude_deg)
     return df
 
 
 def estimate_p_min(df: pd.DataFrame) -> pd.DataFrame:
     """Infer minimum eye pressure from a model fit."""
-    df["min_pressure_hpa"] = p_min(
+    df["min_pressure_hpa"] = p_min_holland_1980(
         df.basin_id.map(ENV_PRESSURE),
         df.max_wind_speed_ms,
         df.radius_to_max_winds_km * 1_000,
         df.geometry.y
     )
     return df
+
+
+def normalise_frequency(freq: pd.DataFrame, tracks: pd.DataFrame) -> pd.DataFrame:
+    """
+    Relabel years of tracks so that typical TC frequency (per-basin) is
+    respected. Return a number of tracks and duration that is the largest
+    possible while respecting the supplied long-term annual frequency
+    constrant.
+
+    Args:
+        freq: Table of ´tc_per_year´, with ´basin_id´ index.
+        tracks: Table of pre-processed track/eyeattributes, with DatetimeIndex.
+
+    Returns:
+        Mutated tracks table with normalised annual frequencies.
+    """
+    freq["tc_count"] = tracks.loc[:, ["track_id", "basin_id"]].groupby("basin_id").nunique()
+    # Given the desired average TC frequency, how many years can we represent?
+    freq["duration_year"] = np.round(freq["tc_count"] / freq["tc_per_year"], 0).astype(int)
+
+    track_basin = tracks.loc[:, ["track_id", "basin_id"]].drop_duplicates().set_index(["track_id"], drop=True)
+    track_year = []
+    for basin_id in freq.index:
+        basin = track_basin[track_basin.basin_id==basin_id].copy()
+        basin["year"] = np.round(np.random.rand(len(basin)) * freq.loc[basin_id, "duration_year"], 0).astype(int)
+        track_year.append(basin)
+    track_year = pd.concat(track_year).sort_values("year")
+    track_year = track_year[track_year.year < freq.duration_year.min()]
+    tracks = tracks.join(track_year.year, on="track_id", how="inner")
+
+    # Label with a tc_number (0 is first TC of the year)
+    # Unique within a given year of SSP-GCM-genesis-method combination
+    tracks["tc_number"] = -1
+    for year in tracks.year.unique():
+        mask = tracks.year == year
+        tc_number, track_id = pd.factorize(tracks.loc[mask, "track_id"])
+        tracks.loc[mask, "tc_number"] = tc_number
+    assert -1 not in tracks["tc_number"].unique()
+
+    tracks = tracks.sort_values(["year", "tc_number", "timestep"])
+    return tracks.loc[
+        :,
+        [
+            "year",
+            "tc_number",
+            "timestep",
+            "track_id",
+            "source_year",
+            "sample",
+            "ensemble",
+            "basin_id",
+            "max_wind_speed_ms",
+            "radius_to_max_winds_km",
+            "min_pressure_hpa",
+            "geometry",
+        ]
+    ]
+

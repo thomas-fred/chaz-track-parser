@@ -22,7 +22,7 @@ OMEGA = (2 * np.pi) / (24 * 60 * 60)
 HECTOPASCALS_PER_PASCAL = 0.01
 
 
-def r_max(v_max: np.ndarray, phi: np.ndarray) -> np.ndarray:
+def r_max_willoughby_2004(v_max: np.ndarray, phi: np.ndarray) -> np.ndarray:
     """
     Tropical cyclone radius to maximum wind as a function of maximum sustained
     wind speed and latitude.
@@ -64,7 +64,7 @@ def b_vickery_wadhera(phi: np.ndarray, r_max: np.ndarray) -> np.ndarray:
     return 1.833 - 0.326 * np.sqrt(coriolis(phi) * r_max)
 
 
-def p_min(
+def p_min_holland_1980(
     p_env: float | np.ndarray,
     v_max: np.ndarray,
     r_max: np.ndarray,
@@ -94,7 +94,7 @@ def p_min(
 
     Args:
         p_env: Environmental pressure (well away from influence of TC), hectopascals
-        v_max: Maximum velocity (TODO: eye or ground relative?), metres / second
+        v_max: Maximum rotational wind speed, metres / second
         r_max: Radial distance from eye to maximum wind speed, metres
         phi: Latitude of eye locations, degrees
         rho: Density of air, kilograms per cubic metre
