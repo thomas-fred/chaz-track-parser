@@ -72,26 +72,27 @@ rule filter_to_epoch:
         ).to_parquet(output.epoch)
 
 
-rule filter_to_epoch:
+rule normalise_frequency:
     """
-    Extract window of years that comprise an epoch
+    Relabel TC years per-basin so annual frequencies are plausible.
 
     Test with:
-    snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2000/tracks-raw-freq.gpq
+    snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2000/tracks.gpq
     """
     input:
-        all_years = rules.concat_samples.output.concat
+        epoch = rules.filter_to_epoch.output.epoch,
+        historic_frequency = rules.historic_frequency.output.frequency,
     output:
-        epoch = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/tracks-raw-freq.gpq"
+        epoch = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/tracks.gpq"
     run:
         import geopandas as gpd
+        import pandas as pd
 
-        from chaz.parse import filter_by_year
+        from chaz.parse import normalise_frequency
 
-        filter_by_year(
-            gpd.read_parquet(input.all_years),
-            int(wildcards.epoch),
-            int(config["epoch_half_width_years"])
+        normalise_frequency(
+            pd.read_csv(input.historic_frequency, na_filter=False).set_index("basin_id"),
+            gpd.read_parquet(input.epoch),
         ).to_parquet(output.epoch)
 
 
