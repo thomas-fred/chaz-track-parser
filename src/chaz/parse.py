@@ -147,6 +147,14 @@ def estimate_p_min(df: pd.DataFrame) -> pd.DataFrame:
         df.radius_to_max_winds_km * 1_000,
         df.geometry.y
     )
+    # See Emanuel 1986 for a discussion of minimum possible pressures (circa 850 hPa)
+    # https://doi.org/10.1175/1520-0469(1986)043%3C0585:AASITF%3E2.0.CO;2
+    # Climate change may reduce this slighty, but very unlikely to pass 800 hPa
+    df["min_pressure_hpa"] = np.where(
+        (df["min_pressure_hpa"] < 800) | (df["min_pressure_hpa"] > 1050),
+        np.nan,
+        df["min_pressure_hpa"]
+    )
     return df
 
 
