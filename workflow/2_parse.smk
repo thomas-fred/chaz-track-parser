@@ -96,26 +96,36 @@ rule normalise_frequency:
         ).to_parquet(output.epoch)
 
 
-rule normalise_frequency:
+rule diagnostic_plot:
     """
-    Relabel TC years per-basin so annual frequencies are plausible.
+    Draw diagnostic plots and maps of meteorological variables and TC frequency.
 
     Test with:
-    snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2000/tracks.gpq
+    snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2000/plots
     """
     input:
-        epoch = rules.filter_to_epoch.output.epoch,
-        historic_frequency = rules.historic_frequency.output.frequency,
+        tracks = rules.normalise_frequency.output.epoch,
     output:
-        epoch = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/tracks.gpq"
+        plot_dir = directory("{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/plots")
     run:
+        from pathlib import Path
+
         import geopandas as gpd
-        import pandas as pd
 
-        from chaz.parse import normalise_frequency
+        from chaz.plot import plot_joint_distributions, plot_tc_frequency, plot_tc_frequency_per_basin, plot_scatter_map
 
-        normalise_frequency(
-            pd.read_csv(input.historic_frequency, na_filter=False).set_index("basin_id"),
-            gpd.read_parquet(input.epoch)
-        ).to_parquet(output.epoch)
+        plot_dir = Path(output.plot_dir)
+        # While Snakemake will create required parent directories for output files
+        # It will not create a directory if it is marked as an output itself
+        plot_dir.mkdir()
+
+        df = gpd.read_parquet(input.tracks)
+
+        title = f"CHAZ: genesis-{wildcards.genesis}, SSP-{wildcards.ssp}, GCM-{wildcards.gcm}, epoch-{wildcards.epoch}"
+        basin_ids = sorted(df.basin_id.unique())
+        met_vars = ["max_wind_speed_ms", "radius_to_max_winds_km", "min_pressure_hpa"]
+        plot_joint_distributions(df, met_vars, title, hue_order=basin_ids).savefig(plot_dir / "met_joint_dist.png")
+        plot_tc_frequency(df, title).savefig(plot_dir / "tc_frequency.png")
+        plot_tc_frequency_per_basin(df, title, hue_order=basin_ids).savefig(plot_dir / "tc_frequency_per_basin.png")
+        plot_scatter_map(df, "max_wind_speed_ms", "Max wind speed [ms-1]", title).savefig(plot_dir / "wind_speed_map.png")
 
