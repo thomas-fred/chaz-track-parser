@@ -20,10 +20,10 @@ micromamba create -f environment.yaml -y
 
 ## Usage
 
-To create tabular records for SSP 585 and GCM UKESM1-0-LL for the
-saturation deficit (SD) genesis method:
+To create tabular records for sample 0 of SSP 585 and GCM UKESM1-0-LL for the column
+relative humidity (CRH) genesis method:
 ```shell
-snakemake -c1 data/out/ssp585/UKESM1-0-LL/SD/tracks.gpq
+snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/sample-000/tracks.gpq
 ```
 
 See `workflow/*.smk` for more examples.
@@ -42,6 +42,7 @@ source_year                  int64
 sample                       int64
 ensemble                     int64
 basin_id                       str
+ss_category                  int64
 max_wind_speed_ms          float64
 radius_to_max_winds_km     float64
 min_pressure_hpa           float64
