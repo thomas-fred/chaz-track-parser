@@ -41,12 +41,12 @@ rule netcdf_to_geoparquet:
         ).to_parquet(output.parquet)
 
 
-rule concat_samples:
+rule filter_to_epoch:
     """
-    Concatenate the samples for a given SSP, GCM and genesis method
+    Extract window of years that comprise an epoch
 
     Test with:
-    snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/tracks.gpq
+    snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2000/tracks-raw-freq.gpq
     """
     input:
         samples = expand(
@@ -54,28 +54,22 @@ rule concat_samples:
             sample=SAMPLES
         ),
     output:
-        concat = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/tracks.gpq"
+        epoch = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/tracks-raw-freq.gpq"
     run:
         import geopandas as gpd
         import pandas as pd
 
-        df = pd.concat([gpd.read_parquet(path) for path in input.samples])
+        from chaz.parse import filter_by_year
 
-        df.loc[
-            :,
+        pd.concat(
             [
-                "source_year",
-                "sample",
-                "ensemble",
-                "timestep",
-                "basin_id",
-                "track_id",
-                "max_wind_speed_ms",
-                "radius_to_max_winds_km",
-                "min_pressure_hpa",
-                "geometry",
+                filter_by_year(
+                    gpd.read_parquet(path),
+                    int(wildcards.epoch),
+                    int(config["epoch_half_width_years"])
+                ) for path in input.samples
             ]
-        ].to_parquet(output.concat)
+        ).to_parquet(output.epoch)
 
 
 rule filter_to_epoch:
