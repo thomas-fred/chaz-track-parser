@@ -50,7 +50,7 @@ def coriolis(phi: np.ndarray) -> np.ndarray:
     return np.abs(2 * OMEGA * np.sin(np.radians(phi)))
 
 
-def b_vickery_wadhera(phi: np.ndarray, r_max: np.ndarray) -> np.ndarray:
+def b_vickery_wadhera_2008(phi: np.ndarray, r_max: np.ndarray) -> np.ndarray:
     """
     Holland's B (shape) parameter as a function of latitude and radius to
     maximum winds, courtesy of a fit in Vickery and Wadhera 2008.
@@ -104,7 +104,7 @@ def p_min_holland_1980(
     """
     lhs_wind_balance =  v_max**2 + coriolis(phi) * r_max * v_max
     numerator = rho * np.e * lhs_wind_balance
-    b = b_vickery_wadhera(phi, r_max)
+    b = b_vickery_wadhera_2008(phi, r_max)
     p_min = p_env - HECTOPASCALS_PER_PASCAL * (numerator / b)
     return p_min
 
