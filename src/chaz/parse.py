@@ -199,6 +199,7 @@ def normalise_frequency(freq: pd.DataFrame, tracks: pd.DataFrame) -> pd.DataFram
             "sample",
             "ensemble",
             "basin_id",
+            "ss_category",
             "max_wind_speed_ms",
             "radius_to_max_winds_km",
             "min_pressure_hpa",
