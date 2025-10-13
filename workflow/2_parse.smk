@@ -74,14 +74,17 @@ rule filter_to_epoch:
 
 rule normalise_frequency:
     """
-    Relabel TC years per-basin so annual frequencies are plausible.
+    Anchor per-basin annual TC frequency to observed rates, multiplied by some
+    change between synthetic epochs. Relabel years of tracks so that expected TC
+    frequencies are respected.
 
     Test with:
     snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2000/tracks.gpq
     """
     input:
-        epoch = rules.filter_to_epoch.output.epoch,
         historic_frequency = rules.historic_frequency.output.frequency,
+        baseline_epoch = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-2010/tracks-raw-freq.gpq",
+        target_epoch = rules.filter_to_epoch.output.epoch,
     output:
         epoch = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/tracks.gpq"
     run:
@@ -92,7 +95,8 @@ rule normalise_frequency:
 
         normalise_frequency(
             pd.read_csv(input.historic_frequency, na_filter=False).set_index("basin_id"),
-            gpd.read_parquet(input.epoch),
+            gpd.read_parquet(input.baseline_epoch),
+            gpd.read_parquet(input.target_epoch),
         ).to_parquet(output.epoch)
 
 

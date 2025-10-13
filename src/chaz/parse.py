@@ -9,8 +9,8 @@ from chaz.models import ENV_PRESSURE, r_max_willoughby_2004, p_min_holland_1980
 
 
 GENESIS_METHOD_CODE = {  # Short code for use in storm_id column
-    "SD": "S",  # saturation deficit
-    "CRH": "H",  # relative humidity
+    "SD": "S",  # Saturation Deficit
+    "CRH": "H",  # Column Relative Humidity
 }
 METERS_PER_SECOND_PER_KNOT = 0.51444
 REFERENCE_DATE = "1950-01-01"  # netCDF 'time' variable is days since this date
@@ -162,45 +162,71 @@ def estimate_p_min(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def normalise_frequency(freq: pd.DataFrame, tracks: pd.DataFrame) -> pd.DataFrame:
+def tc_freq_per_basin(tracks: gpd.GeoDataFrame, year_col: str = "source_year") -> pd.Series:
+    return (
+        tracks.loc[:, ["basin_id", "track_id"]]
+        .groupby(["basin_id"]).nunique()
+        .rename(columns={"track_id": "tc_per_year"})
+        .loc[:, "tc_per_year"]
+        / (tracks[year_col].max() - tracks[year_col].min() + 1)
+    )
+
+
+def normalise_frequency(
+    obs_baseline_freq: pd.DataFrame,
+    synth_baseline_tracks: pd.DataFrame,
+    synth_target_tracks: pd.DataFrame,
+) -> pd.DataFrame:
     """
-    Relabel years of tracks so that typical TC frequency (per-basin) is
-    respected. Return a number of tracks and duration that is the largest
-    possible while respecting the supplied long-term annual frequency
-    constrant.
+    Anchor per-basin annual TC frequency to observed rates, multiplied by some
+    change between synthetic epochs. Relabel years of tracks so that expected TC
+    frequencies are respected. Return a number of tracks and duration that is
+    the largest possible with global coverage while respecting the supplied
+    long-term annual frequency constrant.
 
     Args:
-        freq: Table of ´tc_per_year´, with ´basin_id´ index.
-        tracks: Table of pre-processed track/eyeattributes, with DatetimeIndex.
+        obs_baseline_freq: Table of observed `tc_per_year` from IBTrACS,
+            with `basin_id` index.
+        synth_baseline_tracks: Table of synthetic tracks subset from IBTrACS epoch.  
+        synth_target_tracks: Table of synthetic tracks from some target epoch.
 
     Returns:
-        Mutated tracks table with normalised annual frequencies.
+        Mutated `synth_target_tracks` table with adjusted annual frequencies.
     """
-    freq["tc_count"] = tracks.loc[:, ["track_id", "basin_id"]].groupby("basin_id").nunique()
-    # Given the desired average TC frequency, how many years can we represent?
-    freq["duration_year"] = np.round(freq["tc_count"] / freq["tc_per_year"], 0).astype(int)
+    target_freq = obs_baseline_freq.copy()
+    inter_synth_change = tc_freq_per_basin(synth_target_tracks) / tc_freq_per_basin(synth_baseline_tracks)
+    target_freq["tc_per_year"] = target_freq["tc_per_year"] * inter_synth_change
 
-    track_basin = tracks.loc[:, ["track_id", "basin_id"]].drop_duplicates().set_index(["track_id"], drop=True)
+    # Given the desired average TC frequency, how many years might we represent?
+    target_freq["synth_target_tc_count"] = \
+        synth_target_tracks.loc[:, ["track_id", "basin_id"]].groupby("basin_id").nunique()
+    target_freq["synth_target_duration_year"] = \
+        np.round(target_freq["synth_target_tc_count"] / target_freq["tc_per_year"], 0).astype(int)
+
+    track_basin = \
+        synth_target_tracks.loc[:, ["track_id", "basin_id"]].drop_duplicates().set_index(["track_id"], drop=True)
     track_year = []
-    for basin_id in freq.index:
+    for basin_id in target_freq.index:
         basin = track_basin[track_basin.basin_id==basin_id].copy()
-        basin["year"] = np.round(np.random.rand(len(basin)) * freq.loc[basin_id, "duration_year"], 0).astype(int)
+        basin["year"] = \
+            np.round(np.random.rand(len(basin)) * target_freq.loc[basin_id, "synth_target_duration_year"], 0).astype(int)
         track_year.append(basin)
+
     track_year = pd.concat(track_year).sort_values("year")
-    track_year = track_year[track_year.year < freq.duration_year.min()]
-    tracks = tracks.join(track_year.year, on="track_id", how="inner")
+    track_year = track_year[track_year.year < target_freq["synth_target_duration_year"].min()]
+    synth_target_tracks = synth_target_tracks.join(track_year.year, on="track_id", how="inner")
 
-    # Label with a tc_number (0 is first TC of the year)
+    # Label with a per year tc_number
     # Unique within a given year of SSP-GCM-genesis-method combination
-    tracks["tc_number"] = -1
-    for year in tracks.year.unique():
-        mask = tracks.year == year
-        tc_number, track_id = pd.factorize(tracks.loc[mask, "track_id"])
-        tracks.loc[mask, "tc_number"] = tc_number
-    assert -1 not in tracks["tc_number"].unique()
+    synth_target_tracks["tc_number"] = -1
+    for year in synth_target_tracks.year.unique():
+        mask = synth_target_tracks.year == year
+        tc_number, _ = pd.factorize(synth_target_tracks.loc[mask, "track_id"])
+        synth_target_tracks.loc[mask, "tc_number"] = tc_number
+    assert -1 not in synth_target_tracks["tc_number"].unique()
 
-    tracks = tracks.sort_values(["year", "tc_number", "timestep"])
-    return tracks.loc[
+    synth_target_tracks = synth_target_tracks.sort_values(["year", "tc_number", "timestep"])
+    return synth_target_tracks.loc[
         :,
         [
             "year",

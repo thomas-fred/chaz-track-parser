@@ -42,13 +42,13 @@ rule historic_frequency:
 
     IBTrACS input file created with https://github.com/nismod/open-gira/
 
-    Test with -c1 data/out/historic_TC_freq.csv
+    Test with -c1 data/out/obs_tc_freq/epoch-2010.csv
     """
     input:
         basins = rules.generate_basin_definition.output.basins,
         ibtracs = "{data}/in/IBTrACS.gpq",
     output:
-        frequency = "{data}/out/historic_TC_freq.csv"
+        frequency = "{data}/out/obs_tc_freq/epoch-2010.csv"
     run:
         import geopandas as gpd
         import numpy as np
