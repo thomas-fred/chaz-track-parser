@@ -2,8 +2,6 @@
 
 # Location of netCDF files in ssp245, ssp585 sub-directories
 raw_data_dir: "/mnt/cluster/mistral/incoming_data/lee-2022-CHAZ-global-TC-tracks"
-# The baseline scenario is centered on this year
-baseline_year: 2000
 # When subsetting for baseline or future scenarios, take this many years either side
 epoch_half_width_years: 15
 
