@@ -89,6 +89,10 @@ def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> gpd.Ge
 
 
 def filter_by_year(df: pd.DataFrame, epoch: int, epoch_half_width_years: int) -> pd.DataFrame:
+    lower = epoch - epoch_half_width_years
+    upper = epoch + epoch_half_width_years
+    if lower < df.source_year.min() or df.source_year.max() < upper:
+        raise ValueError(f"{epoch:d} +/- {epoch_half_width_years} is out of range")
     return df[
         (epoch - epoch_half_width_years < df.source_year)
         & (df.source_year < epoch + epoch_half_width_years)
