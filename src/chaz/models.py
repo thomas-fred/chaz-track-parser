@@ -72,9 +72,10 @@ def p_min_holland_1980(
     rho: float | np.ndarray = 1.15,
 ) -> np.ndarray:
     """
-    Infer minimum pressure of tropical cyclone from basic information. When
-    possible, it is best to use a model with a secondary shape parameter, such
-    as radius to 34kt winds (see Chavas 2024). In the absence of this
+    Infer minimum pressure of tropical cyclone from basic information.
+    
+    When possible, it is best to use a model with a secondary shape parameter,
+    such as radius to 34kt winds (see Chavas 2024). In the absence of this
     additional shape data, this function offers a rudimentary estimate of
     pressure.
 
