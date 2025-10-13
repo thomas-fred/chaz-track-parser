@@ -20,6 +20,14 @@ micromamba create -f environment.yaml -y
 
 ## Usage
 
+In `config.yaml`, edit `raw_data_dir` to point towards the grandparent of CHAZ
+netCDF files.
+
+Activate the environment:
+```shell
+micromamba activate chaz
+```
+
 To create tabular records for sample 0, all years of SSP 585 in GCM UKESM1-0-LL,
 for the column relative humidity (CRH) genesis method:
 ```shell
@@ -60,5 +68,5 @@ geometry                geometry  Location of TC eye centre, point. CRS is 4326.
 ```
 
 Rows are synthetic tropical cyclone observations, each with the above fields.
-They come on a datetime index for interpolation purposes. N.B. This index will
+Rows come on a datetime index for interpolation purposes. N.B. This index will
 not tally with the `year`.
