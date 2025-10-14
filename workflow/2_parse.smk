@@ -127,8 +127,16 @@ rule diagnostic_plot:
 
         title = f"CHAZ: genesis-{wildcards.genesis}, SSP-{wildcards.ssp}, GCM-{wildcards.gcm}, epoch-{wildcards.epoch}"
         basin_ids = sorted(df.basin_id.unique())
-        met_vars = ["max_wind_speed_ms", "radius_to_max_winds_km", "min_pressure_hpa"]
-        plot_joint_distributions(df, met_vars, title, hue_order=basin_ids).savefig(plot_dir / "met_joint_dist.png")
+        plot_joint_distributions(
+            df,
+            {
+                "max_wind_speed_ms": ((9, 109), "linear"),
+                "radius_to_max_winds_km": ((0, 124), "linear"),
+                "min_pressure_hpa": ((859, 1049), "linear"),
+            },
+            title,
+            hue_order=basin_ids
+        ).savefig(plot_dir / "met_joint_dist.png")
         plot_tc_frequency(df, title).savefig(plot_dir / "tc_frequency.png")
         plot_tc_frequency_per_basin(df, title, hue_order=basin_ids).savefig(plot_dir / "tc_frequency_per_basin.png")
         plot_scatter_map(df, "max_wind_speed_ms", "Max wind speed [ms-1]", title).savefig(plot_dir / "wind_speed_map.png")

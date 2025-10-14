@@ -3,6 +3,7 @@ import random
 import geopandas as gpd
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 from matplotlib.figure import Figure
 
@@ -10,14 +11,54 @@ from matplotlib.figure import Figure
 COASTLINE_URL = "https://naturalearth.s3.amazonaws.com/50m_physical/ne_50m_coastline.zip"
 
 
+# For example: {"max_wind_speed_ms": ((10, 120), "log")}
+type PlotMetadata = dict[str, tuple[tuple[float, float], str]]
+
+
+def pairplot(df: pd.DataFrame, metadata: PlotMetadata, **kwargs: dict) -> sns.PairGrid:
+    """
+    Extend seaborn's pairplot to enforce consistent axis limits and optional log scaling.
+
+    Args:
+        df: Table of data to plot, must include columns referenced in metadata.
+        metadata: Mapping from column names to tuple of limits (min, max) and
+            scaling, i.e. "linear" or "log"
+        kwargs: Keyword args to pass through to seaborn.pairplot
+
+    Returns:
+        Figure object.
+    """
+    # We don't use the index, but 10 functions down pandas will
+    # Reindex to avoid: ValueError("cannot reindex on an axis with duplicate labels")
+    g = sns.pairplot(df.reset_index(drop=True), **kwargs)
+    
+    for i, row_var in enumerate(metadata.keys()):
+        for j, col_var in enumerate(metadata.keys()):
+            if not g.axes[i, j]:
+                continue
+            elif i == j:
+                limits, scale = metadata[row_var]
+                g.axes[i, j].set_xlim(*limits)
+                g.axes[i, j].set_xscale(scale)
+            else:
+                limits, scale = metadata[col_var]
+                g.axes[i, j].set_xlim(*limits)
+                g.axes[i, j].set_xscale(scale)
+                limits, scale = metadata[row_var]
+                g.axes[i, j].set_ylim(*limits)
+                g.axes[i, j].set_yscale(scale)
+                
+    return g
+
+
 def plot_joint_distributions(
     df: gpd.GeoDataFrame,
-    variables: list[str],
+    metadata: PlotMetadata,
     title: str,
     stride: int = 5000,
     **kwargs: dict
 ) -> Figure:
-    to_plot = df.iloc[::stride].loc[:, ["basin_id"] + variables]
+    to_plot = df.iloc[::stride].loc[:, ["basin_id"] + list(metadata.keys())]
     default_kwargs = dict(
         hue="basin_id",
         plot_kws={"alpha": 0.5},
@@ -25,9 +66,9 @@ def plot_joint_distributions(
         corner=True,
         kind="kde",
     )
-    g = sns.pairplot(to_plot, **dict(default_kwargs, **kwargs))
-    g.fig.suptitle(title)
-    return g.fig
+    g = pairplot(to_plot, metadata, **dict(default_kwargs, **kwargs))
+    g.figure.suptitle(title)
+    return g.figure
 
 
 def plot_tc_frequency(df: gpd.GeoDataFrame, title: str, **kwargs: dict) -> Figure:
