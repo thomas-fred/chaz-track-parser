@@ -3,7 +3,7 @@ configfile: "config.yaml"
 SSPS = ("245", "585")
 # N.B. The model "MRI-ESM2-0" is in ssp585 but not ssp245, while "MPI-ESM1-2" is in ssp245 but not ssp585
 GCMS = ("CESM2", "CNRM-CM6-1", "EC-Earth3", "IPSL-CM6A-LR", "MIROC6", "UKESM1-0-LL")
-EPOCHS = ("2000", "2050")
+EPOCHS = ("2010", "2050", "2080")
 SAMPLES = tuple(f"{x:03d}" for x in range(0, 10))
 GENESIS_METHODS = ("SD", "CRH")
 
@@ -16,3 +16,4 @@ wildcard_constraints:
 include: "1_context.smk"
 include: "2_parse.smk"
 include: "3_target.smk"
+
