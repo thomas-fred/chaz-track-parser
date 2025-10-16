@@ -26,7 +26,7 @@ rule parse_genesis_method:
     """
     input:
         expand(
-            "{{data}}/out/genesis-{{genesis}}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/tracks.gpq",
+            "{{data}}/out/genesis-{{genesis}}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/plots",
             ssp=SSPS,
             gcm=GCMS,
             epoch=EPOCHS,
@@ -46,10 +46,14 @@ rule parse_all:
     """
     input:
         expand(
-            "{{data}}/out/genesis-{genesis}.flag",
+            "{{data}}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/plots",
             genesis=GENESIS_METHODS,
+            ssp=SSPS,
+            gcm=GCMS,
+            epoch=EPOCHS,
         )
     output:
         "{data}/out.flag"
     shell:
         "touch {output}"
+
