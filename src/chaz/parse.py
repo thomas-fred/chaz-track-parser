@@ -20,12 +20,13 @@ def signed_longitude_to_strictly_positive(coords: tuple[float, float]) -> tuple[
     return [(long + 360 if long < 0 else long, lat) for long, lat in coords]
 
 
-def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> gpd.GeoDataFrame:
+def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> pd.DataFrame:
     """
     Create timestamps from reference and offsets
     Convert sparse datacube to dense table
     Create unique track_id
-    Create geometry column
+    
+    Yields one DataFrame per ensemble member.
     """
 
     # Check ordering of dimensions
@@ -45,7 +46,6 @@ def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> gpd.Ge
         ).values.reshape(ds.time.values.shape)
     )
 
-    data = []
     length = prod(ds.time_datetime.data.shape)
     storm = np.repeat(ds.stormID.data, ds.lifelength.shape)
     # N.B. We transpose the input arrays to have stormID as the first dim, then lifelength
@@ -58,34 +58,29 @@ def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> gpd.Ge
     longitude = ds.longitude.data.T.reshape(length)
     latitude = ds.latitude.data.T.reshape(length)
 
-    # Extracting the data takes about 10s to generate 20M+ rows
     for i in ds.ensembleNum.data:
-        data.append(
-            pd.DataFrame(
-                {
-                    "time_utc": timestamps,
-                    "source_year": source_year,
-                    "storm": storm,
-                    "sample": np.ones(length) * int(sample_id),
-                    "ensemble": np.ones(length) * i,
-                    "timestep": timesteps,
-                    "longitude_deg": longitude,
-                    "latitude_deg": latitude,
-                    "max_wind_speed_ms": ds.Mwspd.data[i, :, :].T.reshape(length) * METERS_PER_SECOND_PER_KNOT,
-                }
-            )
-        )
-    df = pd.concat(data).dropna().set_index("time_utc", drop=True).astype({"sample": int, "ensemble": int})
+        df = pd.DataFrame(
+            {
+                "time_utc": timestamps,
+                "source_year": source_year,
+                "storm": storm,
+                "sample": np.ones(length) * int(sample_id),
+                "ensemble": np.ones(length) * i,
+                "timestep": timesteps,
+                "longitude_deg": longitude,
+                "latitude_deg": latitude,
+                "max_wind_speed_ms": ds.Mwspd.data[i, :, :].T.reshape(length) * METERS_PER_SECOND_PER_KNOT,
+            }
+        ).dropna().set_index("time_utc", drop=True).astype({"sample": int, "ensemble": int})
 
-    # Labeling with IDs takes about 35s for 17M rows
-    df["track_id"] = \
-        f"{GENESIS_METHOD_CODE[genesis_method]}" \
-        + f"_{int(sample_id):03d}" \
-        + df["source_year"].map(lambda x: f"_{x:04d}") \
-        + df["storm"].map(lambda x: f"_{x:05d}") \
-        + df["ensemble"].map(lambda x: f"_{x:02d}")
+        df["track_id"] = \
+            f"{GENESIS_METHOD_CODE[genesis_method]}" \
+            + f"_{int(sample_id):03d}" \
+            + df["source_year"].map(lambda x: f"_{x:04d}") \
+            + df["storm"].map(lambda x: f"_{x:05d}") \
+            + df["ensemble"].map(lambda x: f"_{x:02d}")
 
-    return gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude_deg, df.latitude_deg), crs=4326)
+        yield df
 
 
 def filter_by_year(df: pd.DataFrame, epoch: int, epoch_half_width_years: int) -> pd.DataFrame:
@@ -132,9 +127,12 @@ def tag_category(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def tag_basin(df: gpd.GeoDataFrame, basins: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def tag_basin(df: pd.DataFrame, basins: gpd.GeoDataFrame) -> pd.DataFrame:
     """Tag each track point with the encompassing TC basin."""
-    return df.to_crs(epsg=4326).sjoin(basins.to_crs(epsg=4326)).drop(columns="index_right")
+
+    gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.longitude_deg, df.latitude_deg), crs=4326)
+    gdf = gdf.sjoin(basins.to_crs(epsg=4326)).drop(columns="index_right")
+    return gdf.drop(columns="geometry")
 
 
 def estimate_rmw(df: pd.DataFrame) -> pd.DataFrame:
@@ -149,7 +147,7 @@ def estimate_p_min(df: pd.DataFrame) -> pd.DataFrame:
         df.basin_id.map(ENV_PRESSURE),
         df.max_wind_speed_ms,
         df.radius_to_max_winds_km * 1_000,
-        df.geometry.y
+        df.latitude_deg,
     )
     # See Emanuel 1986 for a discussion of minimum possible pressures (circa 850 hPa)
     # https://doi.org/10.1175/1520-0469(1986)043%3C0585:AASITF%3E2.0.CO;2
@@ -162,7 +160,7 @@ def estimate_p_min(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def tc_freq_per_basin(tracks: gpd.GeoDataFrame, year_col: str = "source_year") -> pd.Series:
+def tc_freq_per_basin(tracks: pd.DataFrame, year_col: str = "source_year") -> pd.Series:
     return (
         tracks.loc[:, ["basin_id", "track_id"]]
         .groupby(["basin_id"]).nunique()
@@ -241,7 +239,8 @@ def normalise_frequency(
             "max_wind_speed_ms",
             "radius_to_max_winds_km",
             "min_pressure_hpa",
-            "geometry",
+            "longitude_deg",
+            "latitude_deg",
         ]
     ]
 

@@ -9,6 +9,7 @@ dependencies:
   - pip:
     - -e .
   - datashader
+  - fastparquet
   - geopandas
   - geoviews
   - hatch
