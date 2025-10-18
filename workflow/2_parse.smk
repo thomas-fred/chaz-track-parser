@@ -103,19 +103,26 @@ rule normalise_frequency:
         import geopandas as gpd
         import pandas as pd
 
-        from chaz.parse import normalise_frequency
+        from chaz.parse import normalise_frequency, relative_tc_frequency
 
-        tracks = normalise_frequency(
-            pd.read_csv(input.historic_frequency, na_filter=False).set_index("basin_id"),
-            pd.read_parquet(input.baseline_epoch),
-            pd.read_parquet(input.target_epoch),
-        ).to_parquet(output.epoch)
+        target_freq = pd.read_csv(input.historic_frequency, na_filter=False).set_index("basin_id")
+        synth_baseline_tracks = pd.read_parquet(
+            input.baseline_epoch,
+            columns=["basin_id", "track_id", "source_year"]
+        )
+        synth_target_tracks = pd.read_parquet(input.target_epoch)
+        target_freq["tc_per_year"] = target_freq["tc_per_year"] * relative_tc_frequency(
+            synth_baseline_tracks,
+            synth_target_tracks
+        )
+
+        normalise_frequency(target_freq, synth_target_tracks).to_parquet(output.epoch)
 
 
 rule parquet_to_geoparquet:
     """
-    Convert a parquet file with `latitude_deg` and `longitude_deg` to a
-    geoparquet file with Point geometries.
+    Convert parquet with float longitude and latitude columns to geoparquet with
+    Point geometries.
 
     Test with:
     snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2010/tracks.gpq
@@ -128,12 +135,13 @@ rule parquet_to_geoparquet:
         import geopandas as gpd
         import pandas as pd
 
-        tracks = pd.read_parquet(input.parquet)
-        gpd.GeoDataFrame(
-            tracks,
-            geometry=gpd.points_from_xy(tracks.longitude_deg, tracks.latitude_deg),
-            crs=4326,
-        ).drop(columns=["longitude_deg", "latitude_deg"]).to_parquet(output.geoparquet)
+        df = pd.read_parquet(input.parquet)
+        gdf = gpd.GeoDataFrame(
+            df,
+            geometry=gpd.points_from_xy(df.longitude_deg, df.latitude_deg),
+            crs="EPSG:4326",
+        )
+        gdf.to_parquet(output.geoparquet)
 
 
 rule diagnostic_plot:
