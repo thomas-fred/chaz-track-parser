@@ -103,37 +103,20 @@ rule normalise_frequency:
         import geopandas as gpd
         import pandas as pd
 
-        from chaz.parse import normalise_frequency
+        from chaz.parse import normalise_frequency, relative_tc_frequency
 
-        tracks = normalise_frequency(
-            pd.read_csv(input.historic_frequency, na_filter=False).set_index("basin_id"),
-            pd.read_parquet(input.baseline_epoch),
-            pd.read_parquet(input.target_epoch),
-        ).to_parquet(output.epoch)
+        target_freq = pd.read_csv(input.historic_frequency, na_filter=False).set_index("basin_id"),
+        synth_baseline_tracks = gpd.read_parquet(
+            input.baseline_epoch,
+            columns=["basin_id", "track_id", "source_year"]
+        )
+        synth_target_tracks = gpd.read_parquet(input.target_epoch)
+        target_freq["tc_per_year"] = target_freq["tc_per_year"] * relative_tc_frequency(
+            synth_baseline_tracks,
+            synth_target_tracks
+        )
 
-
-rule parquet_to_geoparquet:
-    """
-    Convert a parquet file with `latitude_deg` and `longitude_deg` to a
-    geoparquet file with Point geometries.
-
-    Test with:
-    snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2010/tracks.gpq
-    """
-    input:
-        parquet = "{path}.pq"
-    output:
-        geoparquet = "{path}.gpq"
-    run:
-        import geopandas as gpd
-        import pandas as pd
-
-        tracks = pd.read_parquet(input.parquet)
-        gpd.GeoDataFrame(
-            tracks,
-            geometry=gpd.points_from_xy(tracks.longitude_deg, tracks.latitude_deg),
-            crs=4326,
-        ).drop(columns=["longitude_deg", "latitude_deg"]).to_parquet(output.geoparquet)
+        normalise_frequency(target_freq, synth_target_tracks).to_parquet(output.epoch)
 
 
 rule diagnostic_plot:

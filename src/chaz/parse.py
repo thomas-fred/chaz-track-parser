@@ -170,11 +170,25 @@ def tc_freq_per_basin(tracks: pd.DataFrame, year_col: str = "source_year") -> pd
     )
 
 
-def normalise_frequency(
-    obs_baseline_freq: pd.DataFrame,
+def relative_tc_frequency(
     synth_baseline_tracks: pd.DataFrame,
     synth_target_tracks: pd.DataFrame,
-) -> pd.DataFrame:
+) -> pd.Series:
+    """
+    Compute the relative change in TC frequency per basin between two synthetic
+    epochs.
+
+    Args:
+        synth_baseline_tracks: Table of synthetic tracks subset from some historical epoch.  
+        synth_target_tracks: Table of synthetic tracks from some target epoch.
+
+    Returns:
+        Series of relative change in `tc_per_year` indexed by `basin_id`.
+    """
+    return tc_freq_per_basin(synth_target_tracks) / tc_freq_per_basin(synth_baseline_tracks)
+
+
+def normalise_frequency(target_freq: pd.Series, synth_target_tracks: pd.DataFrame) -> pd.DataFrame:
     """
     Anchor per-basin annual TC frequency to observed rates, multiplied by some
     change between synthetic epochs. Relabel years of tracks so that expected TC
@@ -183,18 +197,12 @@ def normalise_frequency(
     long-term annual frequency constrant.
 
     Args:
-        obs_baseline_freq: Table of observed `tc_per_year` from IBTrACS,
-            with `basin_id` index.
-        synth_baseline_tracks: Table of synthetic tracks subset from IBTrACS epoch.  
+        target_freq: Series of target `tc_per_year` indexed by `basin_id`.
         synth_target_tracks: Table of synthetic tracks from some target epoch.
 
     Returns:
         Mutated `synth_target_tracks` table with adjusted annual frequencies.
     """
-    target_freq = obs_baseline_freq.copy()
-    inter_synth_change = tc_freq_per_basin(synth_target_tracks) / tc_freq_per_basin(synth_baseline_tracks)
-    target_freq["tc_per_year"] = target_freq["tc_per_year"] * inter_synth_change
-
     # Given the desired average TC frequency, how many years might we represent?
     target_freq["synth_target_tc_count"] = \
         synth_target_tracks.loc[:, ["track_id", "basin_id"]].groupby("basin_id").nunique()
