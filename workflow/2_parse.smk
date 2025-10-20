@@ -24,14 +24,14 @@ rule netcdf_to_parquet:
 
         ds = xr.open_dataset(input.netcdf)
         basins = gpd.read_file(input.basins)
-        
+
         first_chunk = True
         for chunk in chaz_to_table(ds, wildcards.genesis, wildcards.sample):
             chunk = tag_category(chunk)
             chunk = tag_basin(chunk, basins)
             chunk = estimate_rmw(chunk)
             chunk = estimate_p_min(chunk)
-            
+
             chunk.to_parquet(output.parquet, engine="fastparquet", append=not first_chunk)
             first_chunk = False
 
@@ -97,6 +97,8 @@ rule normalise_frequency:
         historic_frequency = rules.historic_frequency.output.frequency,
         baseline_epoch = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-2010/tracks-raw-freq.pq",
         target_epoch = rules.concatenate_samples.output.epoch,
+    resources:
+        mem_mb = 24000
     output:
         epoch = "{data}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/tracks.pq"
     run:
@@ -184,4 +186,3 @@ rule diagnostic_plot:
         plot_tc_frequency(df, title).savefig(plot_dir / "tc_frequency.png")
         plot_tc_frequency_per_basin(df, title, hue_order=basin_ids).savefig(plot_dir / "tc_frequency_per_basin.png")
         plot_scatter_map(df, "max_wind_speed_ms", "Max wind speed [ms-1]", title).savefig(plot_dir / "wind_speed_map.png")
-
