@@ -57,3 +57,30 @@ rule parse_all:
     shell:
         "touch {output}"
 
+
+rule archive:
+    """
+    Collate all of the normalised epochal results.
+
+    Test with:
+    snakemake -c1 data/out/CHAZ-normalised-freq/
+    """
+    input:
+        expand(
+            "{{data}}/out/genesis-{genesis}/SSP-{ssp}/GCM-{gcm}/epoch-{epoch}/tracks.gpq",
+            genesis=GENESIS_METHODS,
+            ssp=SSPS,
+            gcm=GCMS,
+            epoch=EPOCHS,
+        )
+    output:
+        directory("{data}/out/CHAZ-normalised-freq/")
+    shell:
+        """
+        mkdir -p {output}
+
+        for INPUT_FILEPATH in {input}; do
+            OUTPUT_FILENAME=CHAZ_$(echo $INPUT_FILEPATH | grep -o 'genesis-.*' | sed 's#/#_#g')
+            cp $INPUT_FILEPATH {output}/$OUTPUT_FILENAME
+        done
+        """
