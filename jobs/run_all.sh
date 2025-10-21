@@ -24,7 +24,7 @@ micromamba run --name chaz \
         --cores 16 \
         --keep-going \
         --rerun-incomplete \
-        $OUTPUT_DATA_DIR/out.flag
+        $OUTPUT_DATA_DIR/out/CHAZ-normalised-freq
 
 kill $LOG_PROC_PID
 plot-mem $LOG_DIR/proc-mem.csv $LOG_DIR/proc-mem.png
