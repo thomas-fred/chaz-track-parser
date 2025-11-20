@@ -1,9 +1,11 @@
+import logging
 from math import prod
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import xarray as xr
+from tqdm import tqdm
 
 from chaz.models import ENV_PRESSURE, r_max_willoughby_2004, p_min_holland_1980
 
@@ -25,7 +27,7 @@ def chaz_to_table(ds: xr.Dataset, genesis_method: str, sample_id: str) -> pd.Dat
     Create timestamps from reference and offsets
     Convert sparse datacube to dense table
     Create unique track_id
-    
+
     Yields one DataFrame per ensemble member.
     """
 
@@ -179,7 +181,7 @@ def relative_tc_frequency(
     epochs.
 
     Args:
-        synth_baseline_tracks: Table of synthetic tracks subset from some historical epoch.  
+        synth_baseline_tracks: Table of synthetic tracks subset from some historical epoch.
         synth_target_tracks: Table of synthetic tracks from some target epoch.
 
     Returns:
@@ -212,7 +214,9 @@ def normalise_frequency(target_freq: pd.Series, synth_target_tracks: pd.DataFram
     track_basin = \
         synth_target_tracks.loc[:, ["track_id", "basin_id"]].drop_duplicates().set_index(["track_id"], drop=True)
     track_year = []
+    logging.info("Resampling years by basin")
     for basin_id in target_freq.index:
+        logging.info(basin_id)
         basin = track_basin[track_basin.basin_id==basin_id].copy()
         basin["year"] = \
             np.round(np.random.rand(len(basin)) * target_freq.loc[basin_id, "synth_target_duration_year"], 0).astype(int)
@@ -220,18 +224,28 @@ def normalise_frequency(target_freq: pd.Series, synth_target_tracks: pd.DataFram
 
     track_year = pd.concat(track_year).sort_values("year")
     track_year = track_year[track_year.year < target_freq["synth_target_duration_year"].min()]
+    logging.info("Joining years to tracks")
     synth_target_tracks = synth_target_tracks.join(track_year.year, on="track_id", how="inner")
 
+    logging.info("Labelling in-year TC number")
     # Label with a per year tc_number
     # Unique within a given year of SSP-GCM-genesis-method combination
-    synth_target_tracks["tc_number"] = -1
-    for year in synth_target_tracks.year.unique():
-        mask = synth_target_tracks.year == year
-        tc_number, _ = pd.factorize(synth_target_tracks.loc[mask, "track_id"])
-        synth_target_tracks.loc[mask, "tc_number"] = tc_number
-    assert -1 not in synth_target_tracks["tc_number"].unique()
+    track_year = track_year.reset_index().drop(columns=["basin_id"]).drop_duplicates()
+    track_year["tc_number"] = track_year.groupby("year").cumcount()
+    # Pandas merge will drop the (datetime) index by default, we preserve it via a temporary column
+    synth_target_tracks = (synth_target_tracks
+        .reset_index()
+        .merge(track_year, on=["year", "track_id"], how="left", validate="m:1")
+        .set_index("time_utc")
+    )
+    assert all(synth_target_tracks["tc_number"] >= 0)
 
+    logging.info("Sorting tracks")
     synth_target_tracks = synth_target_tracks.sort_values(["year", "tc_number", "timestep"])
+
+    # Relabel sample to be millenia chunks
+    synth_target_tracks["sample"] = np.floor(synth_target_tracks["year"] / 1000).astype(int)
+
     return synth_target_tracks.loc[
         :,
         [
