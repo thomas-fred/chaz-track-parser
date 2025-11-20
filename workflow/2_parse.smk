@@ -161,7 +161,7 @@ rule parquet_to_geoparquet:
             geometry=gpd.points_from_xy(df.longitude_deg, df.latitude_deg),
             crs="EPSG:4326",
         )
-        gdf.to_parquet(output.geoparquet)
+        gdf.drop(columns=["longitude_deg", "latitude_deg"]).to_parquet(output.geoparquet)
 
 
 rule diagnostic_plot:
