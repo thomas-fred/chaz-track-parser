@@ -1,4 +1,4 @@
-configfile: "config.yaml"
+configfile: "config/config.yaml"
 
 SSPS = ("245", "585")
 # N.B. The model "MRI-ESM2-0" is in ssp585 but not ssp245, while "MPI-ESM1-2" is in ssp245 but not ssp585

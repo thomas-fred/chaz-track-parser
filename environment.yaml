@@ -1,8 +1,8 @@
-# to install this environment:
+# To install this environment:
 # micromamba create -f environment.yaml -y
-name: chaz
+name: "chaz"
 channels:
-  - conda-forge  # majority of dependencies
+  - conda-forge
   - nodefaults
 dependencies:
   - python=3.12
@@ -22,6 +22,7 @@ dependencies:
   - matplotlib
   - pyarrow
   - bioconda::snakemake
+  - bioconda::snakemake-executor-plugin-slurm
   - seaborn
   - tqdm
   - xarray

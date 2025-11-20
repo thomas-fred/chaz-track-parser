@@ -36,28 +36,41 @@ snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/sample-000/tracks.gpq
 
 And to produce tracks representative of the 2050 epoch, with calibrated frequencies:
 ```shell
-snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2050/tracks.gpq
+snakemake -c1 data/out/genesis-CRH/SSP-585/GCM-UKESM1-0-LL/epoch-2050/norm-freq/sample-000/tracks.gpq
 ```
 
 N.B. For frequency calibration you will need a table of historic IBTrACS
 observations at `data/in/IBTrACS.gpq`. The [open-gira](https://github.com/nismod/open-gira)
 repository can produce one of these.
 
-See `workflow/*.smk` for more examples.
+To produce the output dataset:
+```shell
+snakemake -c1 data/out/CHAZ-normalised-freq
+```
+
+See `workflow/*.smk` for more rule and output examples.
+
+To create the output dataset on the SoGE cluster (using the snakemake SLURM
+scheduler plugin), activate the environment on a head node and then:
+```shell
+snakemake -j unlimited --profile config/slurm-cluster/ data/out/CHAZ-normalised-freq
+```
 
 ## Output data schema
 
-Each output file is for a given SSP, genesis method, GCM model and epoch combination.
+Each output file in `data/out/CHAZ-normalised-freq` is for a given SSP, genesis
+method, GCM model, epoch and sample combination.
 
 Each file has the following fields:
 ```
 Name                    Type      Description
+time_utc                datetime  Table index. Time of observation from source CHAZ data. _Only_ for interpolation within a given track and audit.
 year                    int64     (Resampled) year of TC. Use this for return period calculations.
 tc_number               int64     Zero indexed counter of TCs within a year.
 timestep                int64     Zero indexed counter of timesteps within a track.
-track_id                str       Track identifier unique within a genesis/SSP/GCM combination (file).
+track_id                str       Track identifier unique within a genesis/SSP/GCM combination.
 source_year             int64     Year of GCM this TC was spawned from.
-sample                  int64     Sample (0-9) in CHAZ output this track came from.
+sample                  int64     Millenium of output (first digit of `year` column). Unique per output file.
 ensemble                int64     Ensemble member (0-39). Members share a path, but vary in intensity.
 basin_id                str       Geographic basin a given track point is within.
 ss_category             int64     Saffir-Simpson wind speed category: -1 unclassified, 0 Tropical Storm, 1-5 as usual.

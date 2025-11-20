@@ -1,0 +1,13 @@
+jobs: 128
+rerun-incomplete: true
+latency-wait: 1
+executor: "slurm"
+slurm-no-account: true
+slurm-logdir: "./jobs/log"
+slurm-delete-logfiles-older-than: 1
+seconds-between-status-checks: 5
+slurm-init-seconds-before-status-checks: 3
+default-resources:
+  slurm_partition: "Short"
+  mem_mb: "16000"
+  runtime: "2h"
