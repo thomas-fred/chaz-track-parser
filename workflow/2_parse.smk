@@ -84,7 +84,7 @@ rule concatenate_samples:
             first_chunk = False
 
 
-rule normalise_frequency:
+checkpoint normalise_frequency:
     """
     Anchor per-basin annual TC frequency to observed rates, multiplied by some
     change between synthetic epochs. Relabel years of tracks so that expected TC
