@@ -61,17 +61,22 @@ snakemake -j unlimited --profile config/slurm-cluster/ data/out/CHAZ-normalised-
 Each output file in `data/out/CHAZ-normalised-freq` is for a given SSP, genesis
 method, GCM model, epoch and sample combination.
 
+Rows are synthetic tropical cyclone observations, each with the above fields.
+Rows come on a datetime index for interpolation purposes. N.B. This index will
+not tally with the `year`.
+
 Each file has the following fields:
 ```
 Name                    Type      Description
-time_utc                datetime  Table index. Time of observation from source CHAZ data. _Only_ for interpolation within a given track and audit.
+time_utc                datetime  Table index. Time of observation from source CHAZ data.
+                                  _Only_ for interpolation within a given track and audit.
 year                    int64     (Resampled) year of TC. Use this for return period calculations.
 tc_number               int64     Zero indexed counter of TCs within a year.
 timestep                int64     Zero indexed counter of timesteps within a track.
 track_id                str       Track identifier unique within a genesis/SSP/GCM combination.
-source_year             int64     Year of GCM this TC was spawned from.
+                                  This can be used to link back to the source netCDF data, following this pattern:
+                                  <genesis short code>_<netcdf sample>_<source year>_<track number>_<ensemble number>
 sample                  int64     Millenium of output (first digit of `year` column). Unique per output file.
-ensemble                int64     Ensemble member (0-39). Members share a path, but vary in intensity.
 basin_id                str       Geographic basin a given track point is within.
 ss_category             int64     Saffir-Simpson wind speed category: -1 unclassified, 0 Tropical Storm, 1-5 as usual.
 max_wind_speed_ms       float64   Maximum rotational (no advection) wind speed estimated by CHAZ model [ms-1].
@@ -79,7 +84,3 @@ radius_to_max_winds_km  float64   Radius from eye at which the maximum is estima
 min_pressure_hpa        float64   Minimum eye pressure [hPa]. Post-processed.
 geometry                geometry  Location of TC eye centre, point. CRS is 4326.
 ```
-
-Rows are synthetic tropical cyclone observations, each with the above fields.
-Rows come on a datetime index for interpolation purposes. N.B. This index will
-not tally with the `year`.
